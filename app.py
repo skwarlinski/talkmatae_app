@@ -253,11 +253,13 @@ def list_conversations():
 # MAIN PROGRAM
 #
 
+
 load_current_conversation()
 
-for message in st.session_state["messages"]:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+if st.session_state.openai_key:
+    for message in st.session_state["messages"]:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 if st.session_state.openai_key: 
     prompt = st.chat_input("O co chcesz spytać?")

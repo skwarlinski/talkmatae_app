@@ -13,7 +13,7 @@ Możesz wypróbować TalkMate [tutaj](https://talkmataeapp-dxc8ahnp2kr9pbbjux6mc
 
 ## Jak zacząć?
 
-1. Odwiedź [aplikację TalkMate](https://talkmataeapp-dxc8ahnp2kr9pbbjux6mcq.streamlit.app/).
+1. Odwiedź aplikację [TalkMate](https://talkmataeapp-dxc8ahnp2kr9pbbjux6mcq.streamlit.app/).
 2. Rozpocznij rozmowę z chatbotem i zadaj pytanie!
 3. Ciesz się inteligentną rozmową!
 
@@ -29,3 +29,15 @@ Aby uruchomić aplikację lokalnie, wykonaj następujące kroki:
 1. Sklonuj repozytorium:
    ```bash
    git clone https://github.com/skwarlinski/talkmate_app.git
+
+2. Zainstaluj wymagane biblioteki:
+   ```bash
+   pip install -r requirements.txt
+
+3. Uruchom aplikację:
+   ```bash
+   streamlit run app.py
+
+## Kontakt
+
+Masz pytania lub uwagi? Skontaktuj się z nami za pośrednictwem [emaila](skwarlinskihubert@gmail.com).

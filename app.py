@@ -27,6 +27,11 @@ st.title("\U0001F5E3️ TalkMate")
 # LOGIN/REGISTER
 #
 
+tab1, tab2 = st.tabs([
+    "Zaloguj się",
+    "Zarejestruj się"
+])
+
 users_db_path = "db"
 users_db_file = Path(users_db_path) / "users.json"
 os.makedirs(users_db_path, exist_ok=True)
@@ -46,7 +51,10 @@ def login_user(username, password):
         users_data = json.load(f)
     return username in users_data and verify_password(users_data[username], password)
 
-def register_user(username, password):
+def register_user(username, password, confirm_password):
+    if password != confirm_password:
+        st.error("Hasła nie są identyczne! Spróbuj ponownie.")
+        return False
     with open(users_db_file, "r") as f:
         users_data = json.load(f)
     if username in users_data:
@@ -62,11 +70,11 @@ if "user_authenticated" not in st.session_state:
     st.session_state.user_authenticated = False
 
 if not st.session_state.user_authenticated:
-    st.subheader("Zaloguj się")
-    username = st.text_input("Nazwa użytkownika", key="login_username")
-    password = st.text_input("Hasło", type="password", key="login_password")
+    tab1.subheader("Zaloguj się")
+    username = tab1.text_input("Nazwa użytkownika", key="login_username")
+    password = tab1.text_input("Hasło", type="password", key="login_password")
     
-    if st.button("Zaloguj"):
+    if tab1.button("Zaloguj"):
         if username and password and login_user(username, password):
             st.session_state.user_authenticated = True
             st.session_state.username = username
@@ -75,12 +83,18 @@ if not st.session_state.user_authenticated:
         else:
             st.error("Błędna nazwa użytkownika lub hasło.")
 
-    if st.button("Zarejestruj się"):
-        if username and password and register_user(username, password):
-            st.session_state.user_authenticated = True
-            st.session_state.username = username
-            st.success("Zarejestrowano pomyślnie! Zalogowano.")
-            st.rerun()
+    tab2.subheader("Zarejestruj się")
+    reg_username = tab2.text_input("Nowa nazwa użytkownika", key="register_username")
+    reg_password = tab2.text_input("Nowe hasło", type="password", key="register_password")
+    confirm_password = tab2.text_input("Potwierdź hasło", type="password", key="confirm_password")
+
+    if tab2.button("Zarejestruj się"):
+        if reg_username and reg_password and confirm_password:
+            if register_user(reg_username, reg_password, confirm_password):
+                st.session_state.user_authenticated = True
+                st.session_state.username = reg_username
+                st.success("Zarejestrowano pomyślnie! Zalogowano.")
+                st.rerun()
         else:
             st.error("Wpisz nazwę użytkownika i hasło.")
 else:

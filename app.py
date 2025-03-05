@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from getpass import getpass
 from time import sleep
+import os
+import bcrypt
 
 model_pricings = {
     "gpt-4o": {
@@ -21,34 +23,104 @@ PRICING = model_pricings[MODEL]
 
 st.title("\U0001F5E3️ TalkMate")
 
+#
+# LOGIN/REGISTER
+#
+
+users_db_path = "db"
+users_db_file = Path(users_db_path) / "users.json"
+os.makedirs(users_db_path, exist_ok=True)
+if not users_db_file.exists():
+    with open(users_db_file, "w") as f:
+        json.dump({}, f)
+
+# Funkcje do obsługi użytkowników
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(stored_hash: str, password: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+
+def login_user(username, password):
+    with open(users_db_file, "r") as f:
+        users_data = json.load(f)
+    return username in users_data and verify_password(users_data[username], password)
+
+def register_user(username, password):
+    with open(users_db_file, "r") as f:
+        users_data = json.load(f)
+    if username in users_data:
+        st.error("Użytkownik o tej nazwie już istnieje!")
+        return False
+    users_data[username] = hash_password(password)
+    with open(users_db_file, "w") as f:
+        json.dump(users_data, f)
+    return True
+
+# Stan sesji użytkownika
+if "user_authenticated" not in st.session_state:
+    st.session_state.user_authenticated = False
+
+if not st.session_state.user_authenticated:
+    st.subheader("Zaloguj się")
+    username = st.text_input("Nazwa użytkownika", key="login_username")
+    password = st.text_input("Hasło", type="password", key="login_password")
+    
+    if st.button("Zaloguj"):
+        if username and password and login_user(username, password):
+            st.session_state.user_authenticated = True
+            st.session_state.username = username
+            st.success("Zalogowano pomyślnie!")
+            st.rerun()
+        else:
+            st.error("Błędna nazwa użytkownika lub hasło.")
+
+    if st.button("Zarejestruj się"):
+        if username and password and register_user(username, password):
+            st.session_state.user_authenticated = True
+            st.session_state.username = username
+            st.success("Zarejestrowano pomyślnie! Zalogowano.")
+            st.rerun()
+        else:
+            st.error("Wpisz nazwę użytkownika i hasło.")
+else:
+    st.sidebar.write(f"Zalogowany jako: {st.session_state.username}")
+    if st.sidebar.button("Wyloguj się"):
+        st.session_state.clear()
+        st.rerun()
+#
+# API KEY
+#
+
 if "openai_key" not in st.session_state:
     st.session_state.openai_key = ""
 
-if not st.session_state.openai_key:
-    openai_key = st.text_input("Podaj swój OpenAI API Key:", type="password")
+if st.session_state.user_authenticated:
+    if not st.session_state.openai_key:
+        openai_key = st.text_input("Podaj swój OpenAI API Key:", type="password")
 
-    if openai_key:  
-        st.session_state.openai_key = openai_key
-        st.session_state.openai_key_verified = False
-        st.rerun()
-else: 
-    if not st.session_state.openai_key_verified:
-        try:
-            # Sprawdzenie poprawności klucza przez wysłanie testowego zapytania
-            openai_client = OpenAI(api_key=st.session_state.openai_key)
-            response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo", messages=[{"role": "system", "content": "Ping"}]
-            )
-
-            st.session_state.openai_key_verified = True
-            st.toast("Klucz API został wprowadzony!", icon="🎉")
-
-        except OpenAIError:
-            st.error("Błędny klucz API! Wpisz poprawny klucz.")
-            sleep(3)
-            del st.session_state.openai_key
+        if openai_key:  
+            st.session_state.openai_key = openai_key
             st.session_state.openai_key_verified = False
             st.rerun()
+    else: 
+        if not st.session_state.openai_key_verified:
+            try:
+                # Sprawdzenie poprawności klucza przez wysłanie testowego zapytania
+                openai_client = OpenAI(api_key=st.session_state.openai_key)
+                response = openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo", messages=[{"role": "system", "content": "Ping"}]
+                )
+
+                st.session_state.openai_key_verified = True
+                st.toast("Klucz API został wprowadzony!", icon="🎉")
+
+            except OpenAIError:
+                st.error("Błędny klucz API! Wpisz poprawny klucz.")
+                sleep(3)
+                del st.session_state.openai_key
+                st.session_state.openai_key_verified = False
+                st.rerun()
 
 openai_client = OpenAI(api_key=st.session_state.openai_key)
 
@@ -119,10 +191,19 @@ def load_conversation_to_state(conversation):
     st.session_state["messages"] = conversation["messages"]
     st.session_state["chatbot_personality"] = conversation["chatbot_personality"]
 
+def get_user_conversations_path():
+    if "username" not in st.session_state:
+        return None
+    return DB_CONVERSATIONS_PATH / st.session_state["username"]
+
 def load_current_conversation():
-    if not DB_PATH.exists():
-        DB_PATH.mkdir()
-        DB_CONVERSATIONS_PATH.mkdir()
+    user_conversations_path = get_user_conversations_path()
+    
+    if not user_conversations_path:
+        return
+
+    if not user_conversations_path.exists():
+        user_conversations_path.mkdir(parents=True)
         conversation_id = 1
         conversation = {
             "id": conversation_id,
@@ -130,41 +211,34 @@ def load_current_conversation():
             "chatbot_personality": DEFAULT_PERSONALITY,
             "messages": [],
         }
-
-        # tworzymy nową konwersację
-        with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
-            f.write(json.dumps(conversation))
-
-        # która od razu staje się aktualną
-        with open(DB_PATH / "current.json", "w") as f:
-            f.write(json.dumps({
-                "current_conversation_id": conversation_id,
-            }))
-
+        with open(user_conversations_path / f"{conversation_id}.json", "w") as f:
+            json.dump(conversation, f)
+        
+        with open(user_conversations_path / "current.json", "w") as f:
+            json.dump({"current_conversation_id": conversation_id}, f)
     else:
-        # sprawdzamy, która konwersacja jest aktualna
-        with open(DB_PATH / "current.json", "r") as f:
-            data = json.loads(f.read())
+        with open(user_conversations_path / "current.json", "r") as f:
+            data = json.load(f)
             conversation_id = data["current_conversation_id"]
 
-        # wczytujemy konwersację
-        with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
-            conversation = json.loads(f.read())
+        with open(user_conversations_path / f"{conversation_id}.json", "r") as f:
+            conversation = json.load(f)
 
     load_conversation_to_state(conversation)
 
 def save_current_conversations_messages():
+    user_conversations_path = get_user_conversations_path()
+    if not user_conversations_path:
+        return
+
     conversation_id = st.session_state["id"]
     new_messages = st.session_state["messages"]
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
-        conversation = json.loads(f.read())
+    with open(user_conversations_path / f"{conversation_id}.json", "r") as f:
+        conversation = json.load(f)
 
-    with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
-        f.write(json.dumps({
-            **conversation,
-            "messages": new_messages,
-        }))
+    with open(user_conversations_path / f"{conversation_id}.json", "w") as f:
+        json.dump({**conversation, "messages": new_messages}, f)
 
 def save_current_conversation_name():
     conversation_id = st.session_state["id"]
@@ -238,10 +312,17 @@ def switch_conversation(conversation_id):
     st.rerun()
 
 def list_conversations():
+    user_conversations_path = get_user_conversations_path()
+    if not user_conversations_path:
+        return []
+
     conversations = []
-    for p in DB_CONVERSATIONS_PATH.glob("*.json"):
+    for p in user_conversations_path.glob("*.json"):
+        if p.name == "current.json":
+            continue  # Pomijamy plik z aktualnym ID konwersacji
+        
         with open(p, "r") as f:
-            conversation = json.loads(f.read())
+            conversation = json.load(f)
             conversations.append({
                 "id": conversation["id"],
                 "name": conversation["name"],

@@ -27,11 +27,6 @@ st.title("\U0001F5E3️ TalkMate")
 # LOGIN/REGISTER
 #
 
-tab1, tab2 = st.tabs([
-    "Zaloguj się",
-    "Zarejestruj się"
-])
-
 users_db_path = "db"
 users_db_file = Path(users_db_path) / "users.json"
 os.makedirs(users_db_path, exist_ok=True)
@@ -68,6 +63,12 @@ def register_user(username, password, confirm_password):
 # Stan sesji użytkownika
 if "user_authenticated" not in st.session_state:
     st.session_state.user_authenticated = False
+
+if not st.session_state.user_authenticated:
+    tab1, tab2 = st.tabs([
+        "Zaloguj się",
+        "Zarejestruj się"
+    ])
 
 if not st.session_state.user_authenticated:
     tab1.subheader("Zaloguj się")

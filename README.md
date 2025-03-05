@@ -40,4 +40,4 @@ Aby uruchomić aplikację lokalnie, wykonaj następujące kroki:
 
 ## Kontakt
 
-Masz pytania lub uwagi? Skontaktuj się z nami za pośrednictwem [emaila](skwarlinskihubert@gmail.com).
+Masz pytania lub uwagi? Skontaktuj się z nami za pośrednictwem [emaila](mailto:skwarlinskihubert@gmail.com).

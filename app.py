@@ -139,6 +139,13 @@ if st.session_state.user_authenticated:
 
 openai_client = OpenAI(api_key=st.session_state.openai_key)
 
+if "openai_key_verified" not in st.session_state:
+    st.session_state.openai_key_verified = False
+
+if st.session_state.user_authenticated and not st.session_state.openai_key_verified:
+    st.subheader("Jak stowrzyć własny OpenAI API Key?")
+    st.video("https://www.youtube.com/watch?v=hSVTPU-FVLI&ab_channel=techHow")
+
 
 #
 # CHATBOT

@@ -292,14 +292,11 @@ def create_new_conversation():
     # poszukajmy ID dla naszej kolejnej konwersacji
     conversations_ids = []
     for p in DB_CONVERSATIONS_PATH.glob("*.json"):
-        try:
-            conversations_ids.append(int(p.stem))
-        except ValueError:
-            continue
+        conversations_ids.append(int(p.stem))
 
     # conversations_ids zawiera wszystkie ID konwersacji
     # nastepna konwersacja będzie miała ID o 1 większe niż największe ID z listy
-    conversation_id = max(conversations_ids, default=0) + 1
+    conversation_id = max(conversations_ids) + 1
     personality = DEFAULT_PERSONALITY
     if "chatbot_personality" in st.session_state and st.session_state["chatbot_personality"]:
         personality = st.session_state["chatbot_personality"]
